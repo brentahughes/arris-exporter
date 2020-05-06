@@ -34,39 +34,53 @@ var (
 		[]string{"type"},
 	)
 
-	ChannelPower = promauto.NewGaugeVec(
+	DownstreamChannelPower = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: promNamespace,
+			Subsystem: "downstream",
 			Name:      "channel_power",
 			Help:      "Power info in dBmV for a channel",
 		},
 		[]string{"channel", "status", "modulation", "channel_id", "frequency"},
 	)
 
-	ChannelSNR = promauto.NewGaugeVec(
+	DownstreamChannelSNR = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: promNamespace,
+			Subsystem: "downstream",
 			Name:      "channel_snr",
 			Help:      "SNR info in dB for a channel",
 		},
 		[]string{"channel", "status", "modulation", "channel_id", "frequency"},
 	)
 
-	ChannelCorrected = promauto.NewGaugeVec(
+	DownstreamChannelCorrected = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: promNamespace,
+			Subsystem: "downstream",
 			Name:      "channel_corrected",
 			Help:      "Packets corrected for a channel",
 		},
 		[]string{"channel", "status", "modulation", "channel_id", "frequency"},
 	)
 
-	ChannelUncorrectable = promauto.NewGaugeVec(
+	DownstreamChannelUncorrectable = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: promNamespace,
+			Subsystem: "downstream",
 			Name:      "channel_uncorrectable",
 			Help:      "Packets uncorrectable for a channel",
 		},
 		[]string{"channel", "status", "modulation", "channel_id", "frequency"},
+	)
+
+	UpstreamChannelPower = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: promNamespace,
+			Subsystem: "upstream",
+			Name:      "channel_power",
+			Help:      "Power info in dBmV for a channel",
+		},
+		[]string{"channel", "status", "type", "channel_id", "symbol_rate", "frequency"},
 	)
 )

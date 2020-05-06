@@ -80,6 +80,54 @@ func (s *Scrapper) getStatus(ctx context.Context) error {
 		return err
 	}
 
+	if err := s.getBootStatus(doc); err != nil {
+		return err
+	}
+
+	if err := s.getDownstream(doc); err != nil {
+		return err
+	}
+
+	if err := s.getUpstream(doc); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Scrapper) getBootStatus(doc *goquery.Document) error {
+	var caughtErr error
+
+	channelTable := doc.Find("#bg3 > div.container > div.content > form > table > tbody > tr")
+	channelTable.Each(func(i int, s *goquery.Selection) {
+		var goodStatus string
+		t := s.Find("td:nth-child(1)").Text()
+		label := strings.ToLower(strings.ReplaceAll(t, " ", "_"))
+
+		switch t {
+		case "Acquire Downstream Channel":
+			goodStatus = "\u00a0"
+		case "Connectivity State", "Boot State", "Configuration File":
+			goodStatus = "OK"
+		case "DOCSIS Network Access Enabled":
+			goodStatus = "Allowed"
+		case "Security":
+			goodStatus = "Enabled"
+		}
+
+		if goodStatus != "" {
+			var status float64 = 1
+			if s.Find("td:nth-child(2)").Text() != goodStatus {
+				status = 0
+			}
+			metrics.BootStatus.WithLabelValues(label).Set(status)
+		}
+	})
+
+	return caughtErr
+}
+
+func (s *Scrapper) getDownstream(doc *goquery.Document) error {
 	var caughtErr error
 
 	channelTable := doc.Find("#bg3 > div.container > div.content > form > center:nth-child(4) > table > tbody > tr")
@@ -126,10 +174,43 @@ func (s *Scrapper) getStatus(ctx context.Context) error {
 			return
 		}
 
-		metrics.ChannelPower.With(channelLabels).Set(power)
-		metrics.ChannelSNR.With(channelLabels).Set(snr)
-		metrics.ChannelCorrected.With(channelLabels).Set(corrected)
-		metrics.ChannelUncorrectable.With(channelLabels).Set(uncorrected)
+		metrics.DownstreamChannelPower.With(channelLabels).Set(power)
+		metrics.DownstreamChannelSNR.With(channelLabels).Set(snr)
+		metrics.DownstreamChannelCorrected.With(channelLabels).Set(corrected)
+		metrics.DownstreamChannelUncorrectable.With(channelLabels).Set(uncorrected)
+	})
+
+	return caughtErr
+}
+
+func (s *Scrapper) getUpstream(doc *goquery.Document) error {
+	var caughtErr error
+
+	channelTable := doc.Find("#bg3 > div.container > div.content > form > center:nth-child(7) > table > tbody > tr")
+	channelTable.Each(func(i int, s *goquery.Selection) {
+		if i < 2 {
+			return
+		}
+
+		channel := s.Find("td:nth-child(1)").Text()
+
+		channelLabels := prometheus.Labels{
+			"channel":     channel,
+			"status":      s.Find("td:nth-child(2)").Text(),
+			"type":        s.Find("td:nth-child(3)").Text(),
+			"channel_id":  s.Find("td:nth-child(4)").Text(),
+			"symbol_rate": s.Find("td:nth-child(5)").Text(),
+			"frequency":   s.Find("td:nth-child(6)").Text(),
+		}
+
+		powerStr := strings.TrimSpace(strings.TrimSuffix(s.Find("td:nth-child(7)").Text(), " dBmV"))
+		power, err := strconv.ParseFloat(powerStr, 64)
+		if err != nil {
+			caughtErr = fmt.Errorf("error getting power on channel %s: %v", channel, err)
+			return
+		}
+
+		metrics.UpstreamChannelPower.With(channelLabels).Set(power)
 	})
 
 	return caughtErr
